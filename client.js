@@ -4,7 +4,7 @@ var CONFIG = { debug: false
              , last_message_time: 1
              , focus: true //event listeners bound in onConnect
              , unread: 0 //updated in the message-processing loop
-             , ping_timeout: 10*1000
+             , ping_timeout: 20*1000
              , ping: null
              };
 
