@@ -1,4 +1,4 @@
-var pg = require('pg'); 
+var pg = require('pg').native; 
 //or native libpq bindings
 //var pg = require('pg').native
 
