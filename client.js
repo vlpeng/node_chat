@@ -4,6 +4,8 @@ var CONFIG = { debug: false
              , last_message_time: 1
              , focus: true //event listeners bound in onConnect
              , unread: 0 //updated in the message-processing loop
+             , ping_timeout: 10*1000
+             , ping: null
              };
 
 var nicks = [];
@@ -140,6 +142,12 @@ function userPart(nick, timestamp) {
   }
   //update the UI
   updateUsersLink();
+}
+
+//handles ping
+function recvPing(nick, timestamp) {
+  //put it in the stream
+  //addMessage(nick, "ping", timestamp, "ping");
 }
 
 // utility functions
@@ -299,6 +307,10 @@ function longPoll (data) {
         case "part":
           userPart(message.nick, message.timestamp);
           break;
+          
+        case "ping":
+          recvPing(message.nick, message.timestamp);
+          break;
       }
     }
     //update the document title to include unread message count if blurred
@@ -325,6 +337,7 @@ function longPoll (data) {
            }
          , success: function (data) {
              transmission_errors = 0;
+             clearTimeout(ping);
              //if everything went well, begin another request immediately
              //the server will take a long time to respond
              //how long? well, it will wait until there is another message
@@ -333,6 +346,9 @@ function longPoll (data) {
              longPoll(data);
            }
          });
+
+  // Send a ping if we don't get a response within CONFIG.ping_timeout
+  ping = setTimeout(sendPing, CONFIG.ping_timeout);       
 }
 
 //submit a new message to the server
@@ -342,6 +358,14 @@ function send(msg) {
     // XXX should add to messages immediately
     jQuery.get("/send", {id: CONFIG.id, text: msg}, function (data) { }, "json");
   }
+}
+
+function sendPing() {
+    if (CONFIG.debug === false) {
+      // XXX should be POST
+      // XXX should add to messages immediately
+      jQuery.get("/ping", {id: CONFIG.id}, function (data) { }, "json");
+    }    
 }
 
 //Transition the page to the state that prompts the user for a nickname

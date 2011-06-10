@@ -29,12 +29,12 @@ client.query("CREATE TABLE chat_messages(nick varchar(50), type varchar(10), tex
     function(err, result) {
         if (err) {
             if (err.code === '42P07') {
-                console.log("chat_messages table already exists");
+                sys.puts("chat_messages table already exists");
             } else {
-                console.log(err);
+                sys.puts(err);
             }
         } else {
-            console.log("created chat_messages table");
+            sys.puts("created chat_messages table");
         }
     });
 
@@ -45,13 +45,13 @@ var channel = new function () {
   var query = client.query("SELECT * FROM chat_messages ORDER BY timestamp LIMIT $1", [MESSAGE_BACKLOG]);
 
   query.on('row', function(row) {
-    console.log(row);
+    sys.puts(sys.inspect(row));
     messages.push(row);
   });
   
   this.appendMessage = function (nick, type, text) {
     var m = { nick: nick
-            , type: type // "msg", "join", "part"
+            , type: type // "msg", "join", "part", "ping"
             , text: text
             , timestamp: (new Date()).getTime()
             };
@@ -66,10 +66,16 @@ var channel = new function () {
       case "part":
         sys.puts(nick + " part");
         break;
+      case "ping":
+        sys.puts(nick + " ping");
+        break;
     }
 
     messages.push( m );
-    client.query("INSERT INTO chat_messages(nick, type, text, timestamp) values($1, $2, $3, $4)",    [m.nick, m.type, m.text, m.timestamp]);
+    if (type !== "ping") {
+      client.query("INSERT INTO chat_messages(nick, type, text, timestamp) values($1, $2, $3, $4)",
+        [m.nick, m.type, m.text, m.timestamp]);
+    }
 
     while (callbacks.length > 0) {
       callbacks.shift().callback([m]);
@@ -232,5 +238,20 @@ fu.get("/send", function (req, res) {
   session.poke();
 
   channel.appendMessage(session.nick, "msg", text);
+  res.simpleJSON(200, { rss: mem.rss });
+});
+
+fu.get("/ping", function (req, res) {
+  var id = qs.parse(url.parse(req.url).query).id;
+
+  var session = sessions[id];
+  if (!session) {
+    res.simpleJSON(400, { error: "No such session id" });
+    return;
+  }
+
+  session.poke();
+  
+  channel.appendMessage(session.nick, "ping");
   res.simpleJSON(200, { rss: mem.rss });
 });
