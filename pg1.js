@@ -2,7 +2,7 @@ var pg = require('pg');
 //or native libpq bindings
 //var pg = require('pg').native
 
-var conString = "tcp://postgres:1234@localhost/postgres";
+var conString = process.env.DATABASE_URL || "tcp://postgres:1234@localhost/postgres";
 
 //error handling omitted
 pg.connect(conString, function(err, client) {
