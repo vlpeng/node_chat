@@ -1,4 +1,7 @@
 Demo for node.js http://tinyclouds.org/node
 
+This fork persists messages in Postgres and implements a periodic ping 
+message to keep the Heroku connection open.
+
 to run
 $ /usr/local/bin/node server.js
