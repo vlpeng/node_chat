@@ -18,40 +18,14 @@ var fu = require("./fu"),
 
 var MESSAGE_BACKLOG = 200,
     SESSION_TIMEOUT = 60 * 1000;
-    
-var pg = require('pg').native; //native libpq bindings = `var pg = require('pg').native`
-var conString = process.env.DATABASE_URL || "tcp://postgres:1234@localhost/postgres";
-
-var client = new pg.Client(conString);
-client.connect();
-
-client.query("CREATE TABLE chat_messages(nick varchar(50), type varchar(10), text varchar(1024), timestamp bigint)", 
-    function(err, result) {
-        if (err) {
-            if (err.code === '42P07') {
-                sys.puts("chat_messages table already exists");
-            } else {
-                sys.puts(err);
-            }
-        } else {
-            sys.puts("created chat_messages table");
-        }
-    });
 
 var channel = new function () {
   var messages = [],
       callbacks = [];
-      
-  var query = client.query("SELECT * FROM chat_messages ORDER BY timestamp LIMIT $1", [MESSAGE_BACKLOG]);
 
-  query.on('row', function(row) {
-    sys.puts(sys.inspect(row));
-    messages.push(row);
-  });
-  
   this.appendMessage = function (nick, type, text) {
     var m = { nick: nick
-            , type: type // "msg", "join", "part", "ping"
+            , type: type // "msg", "join", "part"
             , text: text
             , timestamp: (new Date()).getTime()
             };
@@ -66,16 +40,9 @@ var channel = new function () {
       case "part":
         sys.puts(nick + " part");
         break;
-      case "ping":
-        sys.puts(nick + " ping");
-        break;
     }
 
     messages.push( m );
-    if (type !== "ping") {
-      client.query("INSERT INTO chat_messages(nick, type, text, timestamp) values($1, $2, $3, $4)",
-        [m.nick, m.type, m.text, m.timestamp]);
-    }
 
     while (callbacks.length > 0) {
       callbacks.shift().callback([m]);
@@ -238,20 +205,5 @@ fu.get("/send", function (req, res) {
   session.poke();
 
   channel.appendMessage(session.nick, "msg", text);
-  res.simpleJSON(200, { rss: mem.rss });
-});
-
-fu.get("/ping", function (req, res) {
-  var id = qs.parse(url.parse(req.url).query).id;
-
-  var session = sessions[id];
-  if (!session) {
-    res.simpleJSON(400, { error: "No such session id" });
-    return;
-  }
-
-  session.poke();
-  
-  channel.appendMessage(session.nick, "ping");
   res.simpleJSON(200, { rss: mem.rss });
 });
